@@ -45,10 +45,12 @@ ln -s /Applications/WebStorm.app/Contents/MacOS/webstorm /usr/local/bin/ws
 
 # Install command-line tools using Homebrew
 # These tools include ffmpeg, wget, and more, for various development needs
-brew install ffmpeg wget fnm pure imagemagick ssh-copy-id jq
+brew install ffmpeg wget fnm pure imagemagick ssh-copy-id jq zoxide
 
 # Configure fnm, fast Node.js version management, to use on directory change
 echo 'eval "$(fnm env --use-on-cd)"' >> $HOME/.zshrc
+# Configure zoxie, a smarter cd
+echo 'eval "$(zoxide init zsh)"' >> $HOME/.zshrc
 
 # Add the path to Zsh functions to the Zsh configuration
 echo "fpath+=($(brew --prefix)/share/zsh/site-functions)" >> $HOME/.zshrc
