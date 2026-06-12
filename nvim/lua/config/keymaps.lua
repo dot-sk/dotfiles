@@ -87,3 +87,172 @@ vim.keymap.set({ "n", "x" }, "<leader>gY", function()
     end,
   })
 end, { desc = "Git Browse Copy Current Line" })
+
+local russian_key_aliases = {
+  q = "й",
+  w = "ц",
+  e = "у",
+  r = "к",
+  t = "е",
+  y = "н",
+  u = "г",
+  i = "ш",
+  o = "щ",
+  p = "з",
+  ["["] = "х",
+  ["]"] = "ъ",
+  a = "ф",
+  s = "ы",
+  d = "в",
+  f = "а",
+  g = "п",
+  h = "р",
+  j = "о",
+  k = "л",
+  l = "д",
+  [";"] = "ж",
+  ["'"] = "э",
+  z = "я",
+  x = "ч",
+  c = "с",
+  v = "м",
+  b = "и",
+  n = "т",
+  m = "ь",
+  [","] = "б",
+  ["."] = "ю",
+  Q = "Й",
+  W = "Ц",
+  E = "У",
+  R = "К",
+  T = "Е",
+  Y = "Н",
+  U = "Г",
+  I = "Ш",
+  O = "Щ",
+  P = "З",
+  ["{"] = "Х",
+  ["}"] = "Ъ",
+  A = "Ф",
+  S = "Ы",
+  D = "В",
+  F = "А",
+  G = "П",
+  H = "Р",
+  J = "О",
+  K = "Л",
+  L = "Д",
+  [":"] = "Ж",
+  ['"'] = "Э",
+  Z = "Я",
+  X = "Ч",
+  C = "С",
+  V = "М",
+  B = "И",
+  N = "Т",
+  M = "Ь",
+  ["<"] = "Б",
+  [">"] = "Ю",
+}
+
+local function translate_lhs_to_russian(lhs)
+  local translated = {}
+  local changed = false
+  local index = 1
+
+  while index <= #lhs do
+    local char = lhs:sub(index, index)
+
+    if char == "<" then
+      local closing = lhs:find(">", index, true)
+      if closing then
+        table.insert(translated, lhs:sub(index, closing))
+        index = closing + 1
+      else
+        table.insert(translated, char)
+        index = index + 1
+      end
+    else
+      local code = vim.fn.char2nr(lhs:sub(index), true)
+      char = vim.fn.nr2char(code)
+      local alias = russian_key_aliases[char]
+
+      table.insert(translated, alias or char)
+      changed = changed or alias ~= nil
+      index = index + #char
+    end
+  end
+
+  return changed and table.concat(translated) or nil
+end
+
+local function is_leader_lhs(lhs)
+  return lhs:match("^ ") or lhs:match("^<Space>")
+end
+
+local function copy_leader_map_with_russian_lhs(mode, map, bufnr)
+  local lhs = map.lhsraw or map.lhs
+
+  if not is_leader_lhs(lhs) then
+    return
+  end
+
+  local alias = translate_lhs_to_russian(lhs)
+  if not alias then
+    return
+  end
+
+  local opts = {
+    buffer = bufnr,
+    desc = map.desc,
+    expr = map.expr == 1,
+    nowait = map.nowait == 1,
+    remap = map.noremap == 0,
+    replace_keycodes = map.replace_keycodes == 1,
+    script = map.script == 1,
+    silent = map.silent == 1,
+  }
+
+  vim.api.nvim_buf_call(bufnr or 0, function()
+    if vim.fn.maparg(alias, mode) ~= "" then
+      return
+    end
+
+    vim.keymap.set(mode, alias, map.callback or map.rhs, opts)
+  end)
+end
+
+local function copy_leader_maps_with_russian_lhs(bufnr)
+  for _, mode in ipairs({ "n", "x", "o" }) do
+    local maps = bufnr and vim.api.nvim_buf_get_keymap(bufnr, mode) or vim.api.nvim_get_keymap(mode)
+
+    for _, map in ipairs(maps) do
+      copy_leader_map_with_russian_lhs(mode, map, bufnr)
+    end
+  end
+end
+
+local function schedule_copy_leader_maps_with_russian_lhs(bufnr)
+  vim.schedule(function()
+    if not bufnr or vim.api.nvim_buf_is_valid(bufnr) then
+      copy_leader_maps_with_russian_lhs(bufnr)
+    end
+  end)
+end
+
+schedule_copy_leader_maps_with_russian_lhs()
+
+vim.api.nvim_create_autocmd("User", {
+  group = vim.api.nvim_create_augroup("user_russian_global_leader_aliases", { clear = true }),
+  pattern = "VeryLazy",
+  callback = function()
+    schedule_copy_leader_maps_with_russian_lhs()
+  end,
+})
+
+vim.api.nvim_create_autocmd({ "BufEnter", "LspAttach" }, {
+  group = vim.api.nvim_create_augroup("user_russian_leader_aliases", { clear = true }),
+  callback = function(event)
+    schedule_copy_leader_maps_with_russian_lhs(event.buf)
+  end,
+})
